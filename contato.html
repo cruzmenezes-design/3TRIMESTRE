@@ -32,6 +32,135 @@ Escola">
   <li><a href="jogos.html">Jogos</a></li>
 </ul>
 
+
+
+<!--conteúdo-->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { margin: 0; background: #1a0b05; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
+  #game-box { position: relative; width: 100%; max-width: 800px; height: 220px; border-radius: 12px; overflow: hidden; box-shadow: 0 0 25px rgba(255, 115, 0, 0.4); border: 1px solid #ff7b00; }
+  canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+  #ui { position: absolute; top: 12px; left: 16px; color: #fff; font-weight: bold; text-shadow: 0 0 8px #ff6a00; pointer-events: none; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="game-box">
+  <div id="ui">PONTOS: <span id="pts">0</span> | Clique ou Espaço para pular as ondas!</div>
+  <canvas id="c" width="800" height="220"></canvas>
+</div>
+
+<script>
+const c = document.getElementById('c'), ctx = c.getContext('2d'), ptsEl = document.getElementById('pts');
+let player = { x: 80, y: 130, vy: 0, r: 12, grounded: false };
+let obs = [], sparks = [], score = 0, frame = 0, over = false;
+
+const jump = () => {
+  if (over) { obs = []; score = 0; ptsEl.innerText = 0; over = false; player.y = 100; }
+  else if (player.grounded) { player.vy = -8.5; player.grounded = false; }
+};
+window.addEventListener('keydown', e => e.code === 'Space' && jump());
+c.addEventListener('mousedown', jump);
+c.addEventListener('touchstart', e => { e.preventDefault(); jump(); });
+
+function loop() {
+  frame++;
+  // Céu pôr do sol laranja brilhante
+  let sky = ctx.createLinearGradient(0, 0, 0, 150);
+  sky.addColorStop(0, '#2b0902');
+  sky.addColorStop(0.6, '#b83700');
+  sky.addColorStop(1, '#ff9d00');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 800, 220);
+
+  // Sol brilhante no horizonte
+  ctx.save();
+  ctx.shadowBlur = 35; ctx.shadowColor = '#ffae00';
+  ctx.fillStyle = '#fff0b3';
+  ctx.beginPath(); ctx.arc(620, 145, 42, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // Física do jogador (esfera/barco luminoso)
+  player.vy += 0.45;
+  player.y += player.vy;
+  let waveY = 148 + Math.sin(frame * 0.08) * 4;
+  if (player.y >= waveY - player.r) {
+    player.y = waveY - player.r;
+    player.vy = 0;
+    player.grounded = true;
+  }
+
+  // Mar com ondas e brilho laranja
+  let sea = ctx.createLinearGradient(0, 145, 0, 220);
+  sea.addColorStop(0, '#ff7300');
+  sea.addColorStop(0.3, '#0a3642');
+  sea.addColorStop(1, '#03151c');
+  ctx.fillStyle = sea;
+  ctx.beginPath();
+  ctx.moveTo(0, 220);
+  for (let x = 0; x <= 800; x += 20) {
+    ctx.lineTo(x, 148 + Math.sin(x * 0.03 + frame * 0.08) * 5);
+  }
+  ctx.lineTo(800, 220);
+  ctx.fill();
+
+  // Brilhos flutuantes (partículas)
+  if (frame % 6 === 0) sparks.push({ x: 800, y: Math.random() * 140, s: Math.random() * 2 + 1 });
+  ctx.fillStyle = '#ffd27d';
+  sparks.forEach((p, i) => {
+    p.x -= 2;
+    ctx.fillRect(p.x, p.y, p.s, p.s);
+    if (p.x < 0) sparks.splice(i, 1);
+  });
+
+  // Gerar obstáculos (rochas/boias)
+  if (!over && frame % 85 === 0) obs.push({ x: 820, w: 18, h: 24 + Math.random() * 15 });
+
+  // Desenhar jogador com brilho
+  ctx.save();
+  ctx.shadowBlur = 15; ctx.shadowColor = '#ffaa00';
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // Atualizar e desenhar obstáculos
+  obs.forEach((o, i) => {
+    if (!over) o.x -= 5;
+    ctx.fillStyle = '#1f0c05';
+    ctx.strokeStyle = '#ff8800';
+    ctx.lineWidth = 2;
+    ctx.fillRect(o.x, 152 - o.h, o.w, o.h);
+    ctx.strokeRect(o.x, 152 - o.h, o.w, o.h);
+
+    // Colisão simples
+    if (player.x + player.r > o.x && player.x - player.r < o.x + o.w && player.y + player.r > 152 - o.h) {
+      over = true;
+    }
+    if (o.x + o.w < 0) { obs.splice(i, 1); if (!over) ptsEl.innerText = ++score; }
+  });
+
+  if (over) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, 800, 220);
+    ctx.fillStyle = '#ffae00';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('OPS! CLIQUE PARA TENTAR DE NOVO', 400, 115);
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
+
+
+
+
 <!--Seção rodapé é a parte final da paragrafo 3 da página-->
 <footer class="escola">
 <img class="logo_rodape" src="logo_nossa_escola.png" alt="Logo da Escola">
