@@ -36,127 +36,77 @@ Escola">
 
 <!--conteúdo-->
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<style>
-  body { margin: 0; background: #1a0b05; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-  #game-box { position: relative; width: 100%; max-width: 800px; height: 220px; border-radius: 12px; overflow: hidden; box-shadow: 0 0 25px rgba(255, 115, 0, 0.4); border: 1px solid #ff7b00; }
-  canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
-  #ui { position: absolute; top: 12px; left: 16px; color: #fff; font-weight: bold; text-shadow: 0 0 8px #ff6a00; pointer-events: none; font-size: 14px; }
-</style>
-</head>
-<body>
 
-<div id="game-box">
-  <div id="ui">PONTOS: <span id="pts">0</span> | Clique ou Espaço para pular as ondas!</div>
-  <canvas id="c" width="800" height="220"></canvas>
+
+
+
+<!-- Faixa de Animação Pôr do Sol e Mar -->
+<div style="width: 100%; height: 180px; overflow: hidden; line-height: 0;">
+  <canvas id="mar-sol" style="width: 100%; height: 100%; display: block;"></canvas>
 </div>
 
 <script>
-const c = document.getElementById('c'), ctx = c.getContext('2d'), ptsEl = document.getElementById('pts');
-let player = { x: 80, y: 130, vy: 0, r: 12, grounded: false };
-let obs = [], sparks = [], score = 0, frame = 0, over = false;
+(() => {
+  const c = document.getElementById('mar-sol'), ctx = c.getContext('2d');
+  let t = 0, sunY = 175; // O sol começa escondido e sobe suavemente
 
-const jump = () => {
-  if (over) { obs = []; score = 0; ptsEl.innerText = 0; over = false; player.y = 100; }
-  else if (player.grounded) { player.vy = -8.5; player.grounded = false; }
-};
-window.addEventListener('keydown', e => e.code === 'Space' && jump());
-c.addEventListener('mousedown', jump);
-c.addEventListener('touchstart', e => { e.preventDefault(); jump(); });
-
-function loop() {
-  frame++;
-  // Céu pôr do sol laranja brilhante
-  let sky = ctx.createLinearGradient(0, 0, 0, 150);
-  sky.addColorStop(0, '#2b0902');
-  sky.addColorStop(0.6, '#b83700');
-  sky.addColorStop(1, '#ff9d00');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, 800, 220);
-
-  // Sol brilhante no horizonte
-  ctx.save();
-  ctx.shadowBlur = 35; ctx.shadowColor = '#ffae00';
-  ctx.fillStyle = '#fff0b3';
-  ctx.beginPath(); ctx.arc(620, 145, 42, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  // Física do jogador (esfera/barco luminoso)
-  player.vy += 0.45;
-  player.y += player.vy;
-  let waveY = 148 + Math.sin(frame * 0.08) * 4;
-  if (player.y >= waveY - player.r) {
-    player.y = waveY - player.r;
-    player.vy = 0;
-    player.grounded = true;
+  function resize() {
+    c.width = c.parentElement.offsetWidth;
+    c.height = 180;
   }
+  window.addEventListener('resize', resize);
+  resize();
 
-  // Mar com ondas e brilho laranja
-  let sea = ctx.createLinearGradient(0, 145, 0, 220);
-  sea.addColorStop(0, '#ff7300');
-  sea.addColorStop(0.3, '#0a3642');
-  sea.addColorStop(1, '#03151c');
-  ctx.fillStyle = sea;
-  ctx.beginPath();
-  ctx.moveTo(0, 220);
-  for (let x = 0; x <= 800; x += 20) {
-    ctx.lineTo(x, 148 + Math.sin(x * 0.03 + frame * 0.08) * 5);
+  function draw() {
+    t += 0.025;
+    const w = c.width, h = c.height;
+
+    // 1. Céu em degradê laranja/dourado
+    const sky = ctx.createLinearGradient(0, 0, 0, h * 0.75);
+    sky.addColorStop(0, '#1f0702');
+    sky.addColorStop(0.55, '#c43e00');
+    sky.addColorStop(1, '#ff9e00');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. Sol nascendo/se pondo suavemente com brilho
+    if (sunY > h * 0.56) sunY -= 0.15; // Sobe devagar até o horizonte
+    ctx.save();
+    ctx.shadowBlur = 40;
+    ctx.shadowColor = '#ffb700';
+    ctx.fillStyle = '#fff2b2';
+    ctx.beginPath();
+    ctx.arc(w * 0.72, sunY, 38, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 3. Camadas de ondas do mar na horizontal
+    const waves = [
+      { y: 0.62, amp: 5, freq: 0.012, speed: 0.8, color: 'rgba(255, 123, 0, 0.55)' },
+      { y: 0.68, amp: 7, freq: 0.018, speed: 1.2, color: 'rgba(13, 59, 74, 0.85)' },
+      { y: 0.75, amp: 9, freq: 0.022, speed: 1.6, color: '#051d26' }
+    ];
+
+    waves.forEach(wave => {
+      ctx.fillStyle = wave.color;
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let x = 0; x <= w; x += 15) {
+        const y = h * wave.y + Math.sin(x * wave.freq + t * wave.speed) * wave.amp;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h);
+      ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
   }
-  ctx.lineTo(800, 220);
-  ctx.fill();
-
-  // Brilhos flutuantes (partículas)
-  if (frame % 6 === 0) sparks.push({ x: 800, y: Math.random() * 140, s: Math.random() * 2 + 1 });
-  ctx.fillStyle = '#ffd27d';
-  sparks.forEach((p, i) => {
-    p.x -= 2;
-    ctx.fillRect(p.x, p.y, p.s, p.s);
-    if (p.x < 0) sparks.splice(i, 1);
-  });
-
-  // Gerar obstáculos (rochas/boias)
-  if (!over && frame % 85 === 0) obs.push({ x: 820, w: 18, h: 24 + Math.random() * 15 });
-
-  // Desenhar jogador com brilho
-  ctx.save();
-  ctx.shadowBlur = 15; ctx.shadowColor = '#ffaa00';
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  // Atualizar e desenhar obstáculos
-  obs.forEach((o, i) => {
-    if (!over) o.x -= 5;
-    ctx.fillStyle = '#1f0c05';
-    ctx.strokeStyle = '#ff8800';
-    ctx.lineWidth = 2;
-    ctx.fillRect(o.x, 152 - o.h, o.w, o.h);
-    ctx.strokeRect(o.x, 152 - o.h, o.w, o.h);
-
-    // Colisão simples
-    if (player.x + player.r > o.x && player.x - player.r < o.x + o.w && player.y + player.r > 152 - o.h) {
-      over = true;
-    }
-    if (o.x + o.w < 0) { obs.splice(i, 1); if (!over) ptsEl.innerText = ++score; }
-  });
-
-  if (over) {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, 0, 800, 220);
-    ctx.fillStyle = '#ffae00';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('OPS! CLIQUE PARA TENTAR DE NOVO', 400, 115);
-  }
-  requestAnimationFrame(loop);
-}
-loop();
+  draw();
+})();
 </script>
-</body>
-</html>
+
+
+
 
 
 
